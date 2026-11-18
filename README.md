@@ -59,6 +59,40 @@ Feeds the script sample input and checks the output, without Claude Code. CI run
 
 To see what Claude Code actually sends, run with `CLAUDE_STATUSLINE_DEBUG=1` set in your environment; the script then saves its last input to `~/.claude/statusline-input.json`. The fields are documented at [code.claude.com/docs/en/statusline](https://code.claude.com/docs/en/statusline).
 
+## FAQ: not working?
+
+**I only see one line, like `Opus 5.5 · repos`.**
+That's normal in a new session before the first reply: Claude Code doesn't send context or usage numbers until then. Send any message and the context bar and the `session` / `week` line appear.
+
+**Still one line after a reply.**
+Claude Code isn't sending those fields. Usually one of:
+
+- **Signed in with an API key, not a Claude subscription.** Usage limits are only reported for Claude Pro, Max and similar plans. Run `/status` in Claude Code to see how you're logged in.
+- **An older Claude Code.** Check with `claude --version`; update with `claude update`.
+
+To see exactly what Claude Code sends, start it with debug saving on, send one message, then look at the saved input:
+
+```bash
+CLAUDE_STATUSLINE_DEBUG=1 claude
+# in another terminal, after a reply:
+jq '{model, context_window, rate_limits}' ~/.claude/statusline-input.json
+```
+
+If `rate_limits` is missing or `null`, your account or version isn't sending usage limits; the script has nothing to show.
+
+**No repo or branch, just a folder name.**
+The session's folder isn't inside a git repo (for example `~/repos` holding several repos). Start Claude Code inside a repo to see `repo (branch)`.
+
+**No status line at all.**
+
+- Check `~/.claude/settings.json` has the `statusLine` block (see [Install](#install)).
+- Check the script runs by hand: `echo '{"model":{"display_name":"Opus"}}' | ~/.claude/statusline.sh` should print `Opus`.
+- `jq: command not found`: install jq (`brew install jq` or `apt install jq`).
+- `Permission denied`: `chmod +x ~/.claude/statusline.sh`.
+
+**Garbled characters instead of bars or colours.**
+Your terminal font or locale doesn't support Unicode block characters, or the terminal doesn't support ANSI colours. Use a UTF-8 locale and a modern terminal font.
+
 ## How it works
 
 Claude Code runs the command after each reply and pipes it a JSON object on stdin. The script reads `model.display_name`, `workspace.current_dir`, `context_window.used_percentage`, and `rate_limits.five_hour` / `rate_limits.seven_day` (`used_percentage`, and `resets_at` in Unix seconds) with a single `jq` call, then asks `git` for the repo, branch and dirty state. Git is called with `--no-optional-locks` so it never fights your own git commands for the index lock.
