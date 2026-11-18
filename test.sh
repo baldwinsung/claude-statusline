@@ -12,14 +12,18 @@ check() { # check <name> <input> <expected substring>...
   out=$(run "$input")
   for want in "$@"; do
     if [[ "$out" != *"$want"* ]]; then
-      echo "FAIL $name: missing '$want'"; echo "$out" | sed 's/^/     /'; fail=1; return
+      echo "FAIL $name: missing '$want'"; printf '     %s\n' "$out"; fail=1; return
     fi
   done
   echo "ok   $name"
 }
 
 check "model only" '{"model":{"display_name":"Opus"}}' "Opus"
-[ "$(run '{"model":{"display_name":"Opus"}}' | wc -l | tr -d ' ')" = 1 ] && echo "ok   model only is one line" || { echo "FAIL model only is one line"; fail=1; }
+if [ "$(run '{"model":{"display_name":"Opus"}}' | wc -l | tr -d ' ')" = 1 ]; then
+  echo "ok   model only is one line"
+else
+  echo "FAIL model only is one line"; fail=1
+fi
 
 plain=$(mktemp -d); mkdir "$plain/notes"
 check "folder outside git" "{\"model\":{\"display_name\":\"Opus\"},\"workspace\":{\"current_dir\":\"$plain/notes\"}}" "Opus · notes"
@@ -31,7 +35,7 @@ check "git repo and branch" "{\"model\":{\"display_name\":\"Opus\"},\"workspace\
 check "context bar" '{"model":{"display_name":"Opus"},"context_window":{"used_percentage":12.4}}' \
   "context █░░░░░░░░░ 12%"
 
-check "session and week" "{\"model\":{\"display_name\":\"Opus\"},\"rate_limits\":{\"five_hour\":{\"used_percentage\":3,\"resets_at\":$((now + 17640))},\"seven_day\":{\"used_percentage\":53,\"resets_at\":$((now + 331200))}}}" \
+check "session and week" "{\"model\":{\"display_name\":\"Opus\"},\"rate_limits\":{\"five_hour\":{\"used_percentage\":3,\"resets_at\":$((now + 17670))},\"seven_day\":{\"used_percentage\":53,\"resets_at\":$((now + 331230))}}}" \
   "session ░░░░░░░░░░ 3% resets" "(in 4h54m)" "week █████░░░░░ 53% resets" "(in 3d20h)" "on pace"
 
 check "ahead of pace" "{\"model\":{\"display_name\":\"Opus\"},\"rate_limits\":{\"seven_day\":{\"used_percentage\":80,\"resets_at\":$((now + 400000))}}}" \
